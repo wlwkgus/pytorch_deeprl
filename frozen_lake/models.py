@@ -6,7 +6,7 @@ from torchvision import datasets, transforms
 from torch.autograd import Variable
 from torchvision import models
 
-model = models.densenet201(pretrained=True)
+# model = models.densenet201(pretrained=True)
 
 
 
@@ -49,10 +49,11 @@ class Q(nn.Module):
             if 'bias' not in name:
                 nn.init.kaiming_normal(param)
             else:
-                nn.init.constant(param, 0)
+                nn.init.normal(param, 0, 1)
 
     def forward(self, x):
-        x = x.view(-1, 16)
+        # print(x)
+        x = x.view(-1, 20)
         x = F.relu(self.fc1(x))
         x = F.dropout(x, training=self.training)
         x = F.relu(self.fc2(x))

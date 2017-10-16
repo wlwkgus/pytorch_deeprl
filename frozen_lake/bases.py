@@ -62,7 +62,8 @@ class Trainer(object):
 
     @staticmethod
     def on_sample(state):
-        state['sample'].append(state['train'])
+        # state['sample'].append(state['train'])
+        pass
 
     def on_forward(self, state):
         raise NotImplemented
