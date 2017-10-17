@@ -69,8 +69,9 @@ class Trainer(object):
         raise NotImplemented
 
     def on_start_epoch(self, state):
-        self.reset_meters()
-        state['iterator'] = tqdm(state['iterator'])
+        # self.reset_meters()
+        pass
+        # state['iterator'] = tqdm(state['iterator'])
 
     def on_end_epoch(self, state):
         raise NotImplemented

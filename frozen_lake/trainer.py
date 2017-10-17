@@ -16,7 +16,7 @@ class ConcreteTrainer(Base, Trainer):
     learning_rate = 0.001
     momentum = 0.5
     batch_size = 60
-    batch_game_play_count = 10
+    batch_game_play_count = 100
     MAX_STEPS = 1000000
 
     def __init__(self):
@@ -31,7 +31,7 @@ class ConcreteTrainer(Base, Trainer):
         self.batch_size = 60
         self.env = gym.make('FrozenLake-v0')
         self.env.reset()
-        self.epsilon = 0.2
+        self.epsilon = 0.5
         self.discount_factor = 0.9
 
     def set_up(self):
@@ -51,6 +51,10 @@ class ConcreteTrainer(Base, Trainer):
         observation_vector[observation] = 1
         action_vector[action] = 1
         return np.concatenate((observation_vector, action_vector), 0).astype(dtype=np.float32)
+
+    def on_sample(self, state):
+        # print(state['sample'])
+        pass
 
     def get_iterator(self, is_train):
         play_memory = []
@@ -77,8 +81,12 @@ class ConcreteTrainer(Base, Trainer):
                     break
 
         random.shuffle(play_memory)
+        # Generator pattern cannot continuosly yield values.
+        return_values = []
         for i in range(int(len(play_memory) / self.batch_size)):
-            yield play_memory[i*self.batch_size: (i+1)*self.batch_size]
+            return_values.append(play_memory[i*self.batch_size: (i+1)*self.batch_size])
+        print(return_values)
+        return return_values
 
     def get_max_q_function_value_and_action(self, observation):
         q_value = -9999
@@ -115,7 +123,6 @@ class ConcreteTrainer(Base, Trainer):
                 max_q_value, _ = self.get_max_q_function_value_and_action(next_observation)
                 # print(type(max_q_value))
                 target_value = reward + self.discount_factor * max_q_value
-            # TODO : remake inputs & targets
             if inputs is None:
                 inputs = input_value
             else:
@@ -131,29 +138,29 @@ class ConcreteTrainer(Base, Trainer):
             rewards.append(reward)
 
         # Set up loss & output
-        print(inputs)
+        # print(inputs)
         # print(targets)
         loss = self.criterion(inputs, targets)
-        print('this is loss')
-        print(loss)
-        return loss, Variable(torch.FloatTensor(rewards))
+        # print('this is loss')
+        # print(rewards)
+        return loss, np.mean(np.asarray(rewards, dtype=np.float32))
 
     def _print_information(self, prefix):
-        print('Training loss: %.4f, mean rewards: %.2f%%' % (self.meters[0].value()[0], self.meters[1].value()[0]))
+        print('Training loss: %.4f, mean rewards: %.6f' % (self.meters[0].value()[0], self.meters[1].value()[0]))
 
     def on_end_epoch(self, state):
         # print('Training loss: %.4f, accuracy: %.2f%%' % (meter_loss.value()[0], classerr.value()[0]))
         self._print_information('')
         # do validation at the end of each epoch
         self.reset_meters()
-        self.engine.test(self.get_loss_and_output, self.get_iterator(False))
-        self._print_information('')
+        # self.engine.test(self.get_loss_and_output, self.get_iterator(False))
+        # self._print_information('')
 
     def on_forward(self, state):
         # output is rewards.
-        np_loss = state['loss'].data.numpy()
+        np_loss = state['loss'].data.numpy()[0]
         # print(np_loss)
-        np_output = state['output'].data.numpy()
-        for i in range(self.batch_size):
-            self.meters[0].add(np_loss[i])
-            self.meters[1].add(np_output[i])
+        np_output = state['output']
+        # print(np_output)
+        self.meters[0].add(np_loss)
+        self.meters[1].add(np_output)

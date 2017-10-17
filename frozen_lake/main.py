@@ -15,7 +15,7 @@ args = parser.parse_args()
 def main():
     if args.is_train:
         t = ConcreteTrainer()
-        t.run(epochs=1)
+        t.run(epochs=50)
     else:
         pass
 
