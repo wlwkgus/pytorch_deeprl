@@ -1,9 +1,13 @@
+from torch.utils.data import DataLoader
+
+from game_dataset import GameDataset
 from models import Model, Q
 from bases import Base, Trainer
 from config import Config
 import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
+from torchvision.datasets.mnist import MNIST
 from torch.autograd import Variable
 import torchnet as tnt
 import torch
@@ -13,7 +17,7 @@ import random
 
 
 class ConcreteTrainer(Base, Trainer):
-    learning_rate = 0.001
+    learning_rate = 0.0005
     momentum = 0.5
     batch_size = 60
     batch_game_play_count = 100
@@ -29,9 +33,7 @@ class ConcreteTrainer(Base, Trainer):
 
         self.meters = [tnt.meter.AverageValueMeter(), tnt.meter.AverageValueMeter()]
         self.batch_size = 60
-        self.env = gym.make('FrozenLake-v0')
-        self.env.reset()
-        self.epsilon = 0.5
+        self.epsilon = 0.6
         self.discount_factor = 0.9
 
     def set_up(self):
@@ -48,6 +50,7 @@ class ConcreteTrainer(Base, Trainer):
     def state_action_vector(observation, action):
         observation_vector = np.zeros(16)
         action_vector = np.zeros(4)
+        # print(observation)
         observation_vector[observation] = 1
         action_vector[action] = 1
         return np.concatenate((observation_vector, action_vector), 0).astype(dtype=np.float32)
@@ -57,36 +60,8 @@ class ConcreteTrainer(Base, Trainer):
         pass
 
     def get_iterator(self, is_train):
-        play_memory = []
-        # Play game
-        for i in range(self.batch_game_play_count):
-            observation = self.env.reset()
-            for j in range(self.MAX_STEPS):
-                experience = list()
-                experience.append(observation)
-                if np.random.random() < self.epsilon:
-                    current_action = self.env.action_space.sample()
-                    observation, reward, is_done, info = self.env.step(current_action)
-                else:
-                    _, current_action = self.get_max_q_function_value_and_action(observation)
-                    # print('current action : {0}'.format(current_action))
-                    observation, reward, is_done, info = self.env.step(current_action)
-
-                experience += [current_action, reward, observation, is_done]
-                # print(experience)
-                play_memory.append(
-                    tuple(experience)
-                )
-                if is_done:
-                    break
-
-        random.shuffle(play_memory)
-        # Generator pattern cannot continuosly yield values.
-        return_values = []
-        for i in range(int(len(play_memory) / self.batch_size)):
-            return_values.append(play_memory[i*self.batch_size: (i+1)*self.batch_size])
-        print(return_values)
-        return return_values
+        dataset = GameDataset(self.q_function)
+        return dataset
 
     def get_max_q_function_value_and_action(self, observation):
         q_value = -9999
@@ -107,7 +82,7 @@ class ConcreteTrainer(Base, Trainer):
         inputs = None
         targets = None
         rewards = []
-        # print(len(sample))
+        # print(sample)
         for history in sample:
             # print('this is history {0}'.format(history))
             observation = history[0]
